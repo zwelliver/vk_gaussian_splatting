@@ -83,6 +83,10 @@ void GaussianSplatting::onAttach(nvapp::Application* app)
   m_wallViews    = std::make_unique<WallViews>();
   if(std::getenv("VP_WALL_VIEW"))  // start in wall-view mode (testing convenience)
     m_wallViews->enabled = true;
+  if(std::getenv("VP_WALL_CANVAS"))
+    m_wallRender.canvasEnabled = true;
+  if(std::getenv("VP_WALL_SELFTEST"))
+    m_wallRender.selfTest = true;
 
   // profiling
   m_profilerTimeline = m_profilerManager->createTimeline({.name = "Primary Timeline"});
@@ -245,6 +249,7 @@ void GaussianSplatting::onDetach()
 
   // stops the threads
   m_wallTracking.reset();
+  wallDeinit();
   m_plyLoader.shutdown();
 
   // Release scene and rendering related resources (marks assets for deletion)
@@ -527,6 +532,10 @@ void GaussianSplatting::onRender(VkCommandBuffer cmd)
 
   // 0 if not at least one valide splat set
   const uint32_t splatCount = m_assets.splatSets.getTotalGlobalSplatCount();
+
+  // wall-render: N off-axis views + warp to the HELIOS canvas. Runs first;
+  // the regular pipeline below re-uploads the frame UBO for the main view.
+  renderWallCanvas(cmd, splatCount);
 
   // Update frame counter once per frame and check if temporal sampling has converged
   // IMPORTANT: Call updateFrameCounter() only once to avoid incrementing frameSampleId multiple times
@@ -2479,6 +2488,9 @@ bool GaussianSplatting::initShaders(void)
       success &= compileSlangShader("threedgrt_raytrace.rint_billboard.slang", m_shaders.rtxRintBillboardShader);
     success &= compileSlangShader("particle_as_build.comp.slang", m_shaders.particleAsBuildShader);
   }
+  // wall-render: warp + self-test pattern
+  success &= compileSlangShader("wall_warp.comp.slang", m_shaders.wallWarpShader);
+  success &= compileSlangShader("wall_pattern.comp.slang", m_shaders.wallPatternShader);
   // Post processings
   success &= compileSlangShader("post.comp.slang", m_shaders.postComputeShader);
   // Deferred shading (for raster-only pipelines with surface reconstruction)

@@ -34,20 +34,33 @@ public:
   int  numViews    = 3;  // 2-5 contiguous column groups
   int  displayView = 1;  // which view drives the desktop viewer
 
-  // Rebuild the views from the tracked pupil and replace the frame camera
-  // (view/projection/eye/fov) with the selected off-axis view. Everything
-  // derived downstream (jittered matrix, inverses, focal) follows the
-  // overridden values. Returns false and leaves the frame untouched if no
-  // pupil is available yet or the pupil is behind the wall plane.
+  // Rebuild the views from the tracked pupil. Returns false (views left
+  // stale) if no pupil is available yet or the pupil is behind a wall face.
+  bool rebuild(WallTracking& tracking);
+
+  // Rebuild the views and replace the frame camera (view/projection/eye/fov)
+  // with the selected off-axis view. Everything derived downstream (jittered
+  // matrix, inverses, focal) follows the overridden values. Returns false
+  // and leaves the frame untouched on rebuild failure.
   bool overrideCamera(WallTracking&        tracking,
                       shaderio::FrameInfo& frame,
                       glm::vec3&           eye,
                       glm::vec3&           center,
                       glm::vec3&           up);
 
+  // Fill a complete FrameInfo for offscreen view i at viewRes: camera,
+  // both projection matrices, inverses, focal, viewport — everything the
+  // sort/cull and raster shaders read. `fi` should start as a copy of the
+  // frame's prmFrame so all non-camera settings carry over.
+  void fillViewFrameInfo(int i, int viewRes, shaderio::FrameInfo& fi) const;
+
   const std::vector<ViewFrustum>& views() const { return views_; }
+  const WallModel&                wall() const { return wall_; }
 
 private:
+  // Camera basis + off-axis projection for view i (shared by the two paths).
+  void applyViewCamera(int i, shaderio::FrameInfo& fi) const;
+
   WallModel                wall_;
   std::vector<ViewFrustum> views_;
 };

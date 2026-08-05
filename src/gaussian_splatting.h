@@ -385,6 +385,42 @@ protected:
   // wall-render: off-axis wall views; replaces the whole camera when enabled
   std::unique_ptr<WallViews> m_wallViews;
 
+  // wall-render: N-views + warp canvas state (implemented in gaussian_splatting_wall.cpp)
+  struct WallRenderState
+  {
+    bool canvasEnabled = false;  // render all views + warp to the 4800x1920 canvas
+    bool selfTest      = false;  // analytic pattern instead of splats; numeric gate
+    int  viewRes       = 2048;
+
+    bool     initialized = false;
+    VkFormat colorFormat = VK_FORMAT_UNDEFINED;  // view target format at init time
+
+    nvvk::GBuffer viewBuffers;  // WALL_MAX_VIEWS colors + depth, viewRes^2
+    nvvk::GBuffer canvas;       // 1 color, 4800x1920
+    nvvk::Buffer  infoBuffer;   // WallWarpInfo UBO
+    nvvk::Buffer  errBuffer;    // WallErr, host visible
+
+    VkSampler                linearSampler{};
+    nvvk::DescriptorBindings bindings;
+    VkDescriptorSetLayout    dsetLayout{};
+    VkDescriptorPool         dsetPool{};
+    VkDescriptorSet          dset{};
+    VkPipelineLayout         pipeLayout{};
+    VkPipeline               warpPipeline{};
+    VkPipeline               patternPipeline{};
+
+    // last self-test readback (previous frames' GPU results)
+    float    lastMaxErr  = -1.0f;
+    uint32_t lastBad     = 0;
+    uint32_t lastSamples = 0;
+  };
+  WallRenderState m_wallRender;
+
+  void ensureWallResources();
+  void wallCreatePipelines();
+  void wallDeinit();
+  void renderWallCanvas(VkCommandBuffer cmd, uint32_t splatCount);
+
   // Centralized asset management
   AssetManagerVk m_assets = {};
 
@@ -499,6 +535,9 @@ protected:
     VkShaderModule rtxRahitShader{};   // Any Hit
     VkShaderModule rtxRintShader{};    // Intersection
     VkShaderModule rtxRintBillboardShader{};  // Intersection (billboard variant)
+    // wall-render: warp + self-test pattern compute
+    VkShaderModule wallWarpShader{};
+    VkShaderModule wallPatternShader{};
     // Post processings
     VkShaderModule postComputeShader{};
     // Deferred shading

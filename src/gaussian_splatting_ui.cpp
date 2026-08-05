@@ -1644,6 +1644,23 @@ void GaussianSplattingUI::onUIRender()
 
   guiDrawShaderFeedbackWindow();
 
+  // wall-render: the warped HELIOS canvas (2.5:1)
+  if(m_wallRender.canvasEnabled && m_wallRender.initialized)
+  {
+    // pin the first appearance inside the app window (with multi-viewport,
+    // default absolute coords can land on the other display)
+    const ImGuiViewport* vp = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + 40, vp->WorkPos.y + vp->WorkSize.y * 0.55f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(900, 400), ImGuiCond_FirstUseEver);
+    if(ImGui::Begin("Wall Canvas"))
+    {
+      const float w = ImGui::GetContentRegionAvail().x;
+      ImGui::Image((ImTextureID)m_wallRender.canvas.getDescriptorSet(0),
+                   ImVec2(w, w * float(WallGeometry::canvasH()) / float(WallGeometry::canvasW())));
+    }
+    ImGui::End();
+  }
+
   if(m_showFooterBar)
     guiDrawFooterBar();
 }
@@ -3376,10 +3393,22 @@ void GaussianSplattingUI::guiDrawRendererProperties()
                     "Number of contiguous column groups covering the wall arc.");
       PE::SliderInt("Displayed view", &m_wallViews->displayView, 0, m_wallViews->numViews - 1, "%d", 0,
                     "Which wall view drives this viewport.");
+      PE::Checkbox("Wall canvas", &m_wallRender.canvasEnabled,
+                   "Each frame, render ALL wall views offscreen (per-view GPU sort) and warp\n"
+                   "them onto the 4800x1920 HELIOS canvas (Wall Canvas window).");
+      PE::Checkbox("Warp self-test", &m_wallRender.selfTest,
+                   "Fill the views with an analytic pattern instead of splats and compare the\n"
+                   "warped canvas against exact ground truth. Canvas shows |error| x50:\n"
+                   "near-black = pass, any structure = geometry bug.");
       PE::end();
       ImGui::TextDisabled("FreeD: %s | %llu packets",
                           m_wallTracking && m_wallTracking->listening() ? "listening :5000" : "off",
                           m_wallTracking ? static_cast<unsigned long long>(m_wallTracking->packets()) : 0ULL);
+      if(m_wallRender.selfTest && m_wallRender.lastSamples > 0)
+      {
+        ImGui::TextDisabled("self-test: max err %.2e | %u/%u px > 0.01", m_wallRender.lastMaxErr,
+                            m_wallRender.lastBad, m_wallRender.lastSamples);
+      }
     }
     endCollapsibleGroup(open);
   }
