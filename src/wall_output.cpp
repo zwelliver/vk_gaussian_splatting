@@ -179,7 +179,11 @@ WallOutput::~WallOutput()
 
 bool WallOutput::closeRequested() const
 {
-  return m_window && glfwWindowShouldClose(m_window);
+  if(!m_window)
+    return false;
+  // ESC works when the wall window itself has focus (e.g. after clicking the
+  // wall display); the operator-side toggle is the usual path.
+  return glfwWindowShouldClose(m_window) || glfwGetKey(m_window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
 }
 
 bool WallOutput::present(VkImage canvas, VkExtent2D canvasSize)
