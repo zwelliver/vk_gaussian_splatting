@@ -3396,6 +3396,13 @@ void GaussianSplattingUI::guiDrawRendererProperties()
       PE::Checkbox("Wall canvas", &m_wallRender.canvasEnabled,
                    "Each frame, render ALL wall views offscreen (per-view GPU sort) and warp\n"
                    "them onto the 4800x1920 HELIOS canvas (Wall Canvas window).");
+      if(PE::Checkbox("Fullscreen wall output", &m_wallRender.outputEnabled,
+                      "Take over the HELIOS head with a fullscreen vsync-locked window showing\n"
+                      "the warped canvas. Alt+F4 on that window (or unchecking) releases it.")
+         && m_wallRender.outputEnabled)
+      {
+        m_wallRender.canvasEnabled = true;  // output implies the canvas pass
+      }
       PE::Checkbox("Warp self-test", &m_wallRender.selfTest,
                    "Fill the views with an analytic pattern instead of splats and compare the\n"
                    "warped canvas against exact ground truth. Canvas shows |error| x50:\n"

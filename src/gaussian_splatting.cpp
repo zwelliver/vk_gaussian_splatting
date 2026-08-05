@@ -87,6 +87,8 @@ void GaussianSplatting::onAttach(nvapp::Application* app)
     m_wallRender.canvasEnabled = true;
   if(std::getenv("VP_WALL_SELFTEST"))
     m_wallRender.selfTest = true;
+  if(std::getenv("VP_WALL_OUTPUT"))
+    m_wallRender.canvasEnabled = m_wallRender.outputEnabled = true;
 
   // profiling
   m_profilerTimeline = m_profilerManager->createTimeline({.name = "Primary Timeline"});
@@ -249,6 +251,7 @@ void GaussianSplatting::onDetach()
 
   // stops the threads
   m_wallTracking.reset();
+  m_wallOutput.reset();
   wallDeinit();
   m_plyLoader.shutdown();
 
@@ -345,6 +348,30 @@ void GaussianSplatting::onResize(VkCommandBuffer cmd, const VkExtent2D& viewport
 void GaussianSplatting::onPreRender()
 {
   m_profilerTimeline->frameAdvance();
+
+  // wall-render: fullscreen wall output. Blits the canvas the GPU wrote
+  // during the previous frame's submit (same queue, so ordering holds).
+  if(m_wallRender.canvasEnabled && m_wallRender.outputEnabled && m_wallRender.initialized)
+  {
+    if(!m_wallOutput)
+      m_wallOutput = std::make_unique<WallOutput>(m_app->getInstance(), m_app->getPhysicalDevice(), m_device,
+                                                  m_app->getQueue(0), uint32_t(WallGeometry::canvasW()),
+                                                  uint32_t(WallGeometry::canvasH()));
+    if(m_wallOutput->closeRequested() || !m_wallOutput->valid())
+    {
+      m_wallRender.outputEnabled = false;
+      m_wallOutput.reset();
+    }
+    else
+    {
+      m_wallOutput->present(m_wallRender.canvas.getColorImage(0),
+                            {uint32_t(WallGeometry::canvasW()), uint32_t(WallGeometry::canvasH())});
+    }
+  }
+  else if(m_wallOutput)
+  {
+    m_wallOutput.reset();
+  }
 
   // Reset helper rendering flag at start of frame
   m_helpers.resetFrameState();

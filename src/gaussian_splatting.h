@@ -98,6 +98,7 @@
 #include "sky_sun_and_ibl.h"
 #include "wall_tracking.h"  // wall-render: FreeD tracking driving the eye
 #include "wall_views.h"     // wall-render: off-axis wall views
+#include "wall_output.h"    // wall-render: fullscreen HDMI output
 
 // #DLSS
 #if defined(USE_DLSS)
@@ -389,6 +390,7 @@ protected:
   struct WallRenderState
   {
     bool canvasEnabled = false;  // render all views + warp to the 4800x1920 canvas
+    bool outputEnabled = false;  // fullscreen wall output on the HELIOS head
     bool selfTest      = false;  // analytic pattern instead of splats; numeric gate
     int  viewRes       = 2048;
 
@@ -415,6 +417,9 @@ protected:
     uint32_t lastSamples = 0;
   };
   WallRenderState m_wallRender;
+
+  // wall-render: fullscreen output window on the HELIOS head
+  std::unique_ptr<WallOutput> m_wallOutput;
 
   void ensureWallResources();
   void wallCreatePipelines();
