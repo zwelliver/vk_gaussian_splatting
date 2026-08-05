@@ -96,6 +96,7 @@
 #include "splat_sorter_async.h"
 #include "visual_helpers_vk.h"  // 3D gizmo and grid visualization
 #include "sky_sun_and_ibl.h"
+#include "wall_tracking.h"  // wall-render: FreeD tracking driving the eye
 
 // #DLSS
 #if defined(USE_DLSS)
@@ -377,6 +378,9 @@ protected:
 
   // scene loader
   PlyLoaderAsync m_plyLoader;
+
+  // wall-render: FreeD tracking; overrides the camera eye once packets arrive
+  std::unique_ptr<WallTracking> m_wallTracking;
 
   // Centralized asset management
   AssetManagerVk m_assets = {};

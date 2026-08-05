@@ -45,6 +45,11 @@ set_property(TARGET upsweep_slang PROPERTY FOLDER "ThirdParty/vrdx")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/spz)
 set_property(TARGET spz PROPERTY FOLDER "ThirdParty")
 
+#####
+# wall-render: vpcore (wall model, view/warp math, FreeD tracking) from the
+# sibling custom-vp-system checkout
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../custom-vp-system vpcore EXCLUDE_FROM_ALL)
+
 #####################################################################################
 # Source files for this project
 #
@@ -99,6 +104,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   vk_radix_sort
   spz::spz
   tinygltf
+  vpcore
 )
 
 add_project_definitions(${PROJECT_NAME})

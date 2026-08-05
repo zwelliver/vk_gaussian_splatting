@@ -77,6 +77,10 @@ void GaussianSplatting::onAttach(nvapp::Application* app)
   VkPipelineCacheCreateInfo cacheCreateInfo{VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
   NVVK_CHECK(vkCreatePipelineCache(m_device, &cacheCreateInfo, nullptr, &m_pipelineCache));
 
+  // wall-render: start listening for FreeD; port must match the Mars output
+  // config (constant for bring-up, moves to the operator UI later)
+  m_wallTracking = std::make_unique<WallTracking>(5000);
+
   // profiling
   m_profilerTimeline = m_profilerManager->createTimeline({.name = "Primary Timeline"});
   m_profilerGpuTimer.init(m_profilerTimeline, m_app->getDevice(), m_app->getPhysicalDevice(), m_app->getQueue(0).familyIndex, false);
@@ -237,6 +241,7 @@ void GaussianSplatting::onDetach()
   vkDeviceWaitIdle(m_device);
 
   // stops the threads
+  m_wallTracking.reset();
   m_plyLoader.shutdown();
 
   // Release scene and rendering related resources (marks assets for deletion)
@@ -1614,6 +1619,18 @@ void GaussianSplatting::updateAndUploadFrameInfoUBO(VkCommandBuffer cmd, const u
   auto timerSection = m_profilerGpuTimer.cmdFrameSection(cmd, "UBO update");
 
   Camera camera = m_assets.cameras.getCamera();
+
+  // wall-render: live tracking overrides the eye position, translating eye and
+  // center together so the view direction (mouse orbit) is preserved. Full-wall
+  // rendering depends only on the pupil position (plan §1); the desktop viewer
+  // keeps a normal perspective camera for bring-up.
+  if(m_wallTracking)
+  {
+    glm::dvec3 e, c, u, pupil;
+    cameraManip->getLookat(e, c, u);
+    if(m_wallTracking->pupilScene(pupil))
+      cameraManip->setLookat(pupil, c + (pupil - e), u, true);
+  }
 
   // CameraManipulator is double precision; narrow to our single-precision members.
   glm::dvec3 eyeD, centerD, upD;
