@@ -3364,6 +3364,26 @@ void GaussianSplattingUI::guiDrawRendererProperties()
     endCollapsibleGroup(open);
   }
 
+  {  // wall-render: off-axis wall views driven by FreeD tracking
+    bool open = beginCollapsibleGroup("Wall Render", true);
+    if(open)
+    {
+      PE::begin("## Wall render", ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchSame);
+      PE::Checkbox("Wall views", &m_wallViews->enabled,
+                   "Replace the camera with an off-axis wall view built from the tracked entrance pupil.\n"
+                   "Requires FreeD packets (Vive Mars or freed_sender).");
+      PE::SliderInt("View count", &m_wallViews->numViews, 2, 5, "%d", 0,
+                    "Number of contiguous column groups covering the wall arc.");
+      PE::SliderInt("Displayed view", &m_wallViews->displayView, 0, m_wallViews->numViews - 1, "%d", 0,
+                    "Which wall view drives this viewport.");
+      PE::end();
+      ImGui::TextDisabled("FreeD: %s | %llu packets",
+                          m_wallTracking && m_wallTracking->listening() ? "listening :5000" : "off",
+                          m_wallTracking ? static_cast<unsigned long long>(m_wallTracking->packets()) : 0ULL);
+    }
+    endCollapsibleGroup(open);
+  }
+
   // --- Lighting and temporal ---
   {
     bool open = beginCollapsibleGroup("Lighting and Temporal", true);

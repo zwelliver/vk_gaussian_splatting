@@ -80,6 +80,9 @@ void GaussianSplatting::onAttach(nvapp::Application* app)
   // wall-render: start listening for FreeD; port must match the Mars output
   // config (constant for bring-up, moves to the operator UI later)
   m_wallTracking = std::make_unique<WallTracking>(5000);
+  m_wallViews    = std::make_unique<WallViews>();
+  if(std::getenv("VP_WALL_VIEW"))  // start in wall-view mode (testing convenience)
+    m_wallViews->enabled = true;
 
   // profiling
   m_profilerTimeline = m_profilerManager->createTimeline({.name = "Primary Timeline"});
@@ -1653,6 +1656,13 @@ void GaussianSplatting::updateAndUploadFrameInfoUBO(VkCommandBuffer cmd, const u
   // but is used as a fallback for 3DGS when Fisheye is on
   // projectionMatrix stays unjittered (used by raygen, motion vectors, etc.)
   prmFrame.projectionMatrix = cameraManip->getPerspectiveMatrix();
+
+  // wall-render: wall-view mode replaces the whole camera (eye + orientation +
+  // off-axis projection) with the selected wall view built from the tracked
+  // pupil. Everything derived below (jittered matrix, projInverse, focal,
+  // view quaternion) follows the overridden values.
+  if(m_wallViews && m_wallViews->enabled && m_wallTracking)
+    m_wallViews->overrideCamera(*m_wallTracking, prmFrame, m_eye, m_center, m_up);
 
 #if defined(USE_DLSS)
   // Create jittered projection matrix for rasterization when DLSS is enabled

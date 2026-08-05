@@ -28,6 +28,10 @@ public:
   // the receiver could not bind its port.
   bool pupilScene(glm::dvec3& out);
 
+  // Same pupil in the wall/stage frame (mm, Y-up, wall toward -Z) — the
+  // frame vpcore's WallModel and buildViews() work in.
+  bool pupilStageMm(Vec3& out);
+
   bool     listening() const { return rx_ != nullptr; }
   uint64_t packets() const { return rx_ ? rx_->packets() : 0; }
 

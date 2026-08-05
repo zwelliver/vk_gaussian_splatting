@@ -47,12 +47,22 @@ glm::dvec3 WallTracking::marsToScene(const Vec3& mm)
 
 bool WallTracking::pupilScene(glm::dvec3& out)
 {
+  Vec3 stageMm;
+  if(!pupilStageMm(stageMm))
+    return false;
+  out = glm::dvec3(stageMm.x, stageMm.y, stageMm.z) / 1000.0;
+  return true;
+}
+
+bool WallTracking::pupilStageMm(Vec3& out)
+{
   if(!rx_)
     return false;
   Vec3 mm;
   if(!core_.pupil(nowSec(), mm))
     return false;
-  out = marsToScene(mm);
+  // Same axis mapping as marsToScene, kept in millimeters.
+  out = {mm.x, mm.z, -mm.y};
   return true;
 }
 

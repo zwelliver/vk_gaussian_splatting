@@ -97,6 +97,7 @@
 #include "visual_helpers_vk.h"  // 3D gizmo and grid visualization
 #include "sky_sun_and_ibl.h"
 #include "wall_tracking.h"  // wall-render: FreeD tracking driving the eye
+#include "wall_views.h"     // wall-render: off-axis wall views
 
 // #DLSS
 #if defined(USE_DLSS)
@@ -381,6 +382,8 @@ protected:
 
   // wall-render: FreeD tracking; overrides the camera eye once packets arrive
   std::unique_ptr<WallTracking> m_wallTracking;
+  // wall-render: off-axis wall views; replaces the whole camera when enabled
+  std::unique_ptr<WallViews> m_wallViews;
 
   // Centralized asset management
   AssetManagerVk m_assets = {};
