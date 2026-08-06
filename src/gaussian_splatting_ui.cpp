@@ -3407,9 +3407,65 @@ void GaussianSplattingUI::guiDrawRendererProperties()
                    "Fill the views with an analytic pattern instead of splats and compare the\n"
                    "warped canvas against exact ground truth. Canvas shows |error| x50:\n"
                    "near-black = pass, any structure = geometry bug.");
+      if(m_wallTracking)
+      {
+        static int portEdit = -1;
+        if(portEdit < 0)
+          portEdit = int(m_wallTracking->port());
+        if(PE::InputInt("FreeD port", &portEdit, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue,
+                        "UDP port for FreeD packets. Press Enter to rebind.\n"
+                        "Must match the Vive Mars tracking-output configuration."))
+        {
+          if(portEdit > 0 && portEdit < 65536)
+            m_wallTracking->restart(uint16_t(portEdit));
+        }
+
+        const auto ids    = m_wallTracking->cameraIds();
+        const int  active = m_wallTracking->activeCamera();
+        PE::entry(
+            "Active camera",
+            [&]() {
+              bool changed = false;
+              char current[32];
+              snprintf(current, sizeof(current), ids.empty() ? "none seen yet" : "camera %d", active);
+              if(ImGui::BeginCombo("##ActiveCam", current))
+              {
+                for(int id : ids)
+                {
+                  char item[32];
+                  snprintf(item, sizeof(item), "camera %d", id);
+                  if(ImGui::Selectable(item, id == active))
+                  {
+                    m_wallTracking->setActiveCamera(id);
+                    changed = true;
+                  }
+                }
+                ImGui::EndCombo();
+              }
+              return changed;
+            },
+            "FreeD camera id driving the wall. Mars sends one id per rover;\n"
+            "auto-locks to the first id seen until picked here (cut-sync switching).");
+
+        Vec3  off    = m_wallTracking->nodalOffsetMm(active);
+        float offF[3] = {float(off.x), float(off.y), float(off.z)};
+        PE::entry(
+            "Nodal offset mm",
+            [&]() {
+              if(ImGui::InputFloat3("##Nodal", offF, "%.1f", ImGuiInputTextFlags_EnterReturnsTrue))
+              {
+                m_wallTracking->setNodalOffsetMm(active, {offF[0], offF[1], offF[2]});
+                return true;
+              }
+              return false;
+            },
+            "Tracker origin -> lens entrance pupil for the active camera,\n"
+            "camera-local {right, forward, up} in mm. Press Enter to apply.");
+      }
       PE::end();
-      ImGui::TextDisabled("FreeD: %s | %llu packets",
-                          m_wallTracking && m_wallTracking->listening() ? "listening :5000" : "off",
+      ImGui::TextDisabled("FreeD: %s :%u | %llu packets",
+                          m_wallTracking && m_wallTracking->listening() ? "listening" : "OFF",
+                          m_wallTracking ? unsigned(m_wallTracking->port()) : 0u,
                           m_wallTracking ? static_cast<unsigned long long>(m_wallTracking->packets()) : 0ULL);
       if(m_wallRender.selfTest && m_wallRender.lastSamples > 0)
       {

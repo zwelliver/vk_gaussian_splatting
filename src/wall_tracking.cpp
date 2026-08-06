@@ -20,10 +20,16 @@ double nowSec()
 
 WallTracking::WallTracking(uint16_t port)
 {
+  start(port);
+}
+
+void WallTracking::start(uint16_t port)
+{
+  port_ = port;
   try
   {
     rx_ = std::make_unique<FreeDReceiver>(port, [this](const FreeDPose& pose, double tSec) {
-      if(!lockedCamera_)
+      if(!lockedCamera_ && !manualCamera_)
       {
         core_.setActiveCamera(pose.cameraId);
         lockedCamera_ = true;
@@ -36,6 +42,39 @@ WallTracking::WallTracking(uint16_t port)
   {
     LOGW("WallTracking: disabled (%s)\n", e.what());
   }
+}
+
+void WallTracking::restart(uint16_t port)
+{
+  rx_.reset();
+  start(port);
+}
+
+std::vector<int> WallTracking::cameraIds() const
+{
+  return core_.cameraIds();
+}
+
+int WallTracking::activeCamera() const
+{
+  return core_.activeCamera();
+}
+
+void WallTracking::setActiveCamera(int id)
+{
+  manualCamera_ = true;
+  lockedCamera_ = true;
+  core_.setActiveCamera(id);
+}
+
+Vec3 WallTracking::nodalOffsetMm(int id) const
+{
+  return core_.nodalOffset(id);
+}
+
+void WallTracking::setNodalOffsetMm(int id, const Vec3& offsetMm)
+{
+  core_.setNodalOffset(id, offsetMm);
 }
 
 glm::dvec3 WallTracking::marsToScene(const Vec3& mm)
